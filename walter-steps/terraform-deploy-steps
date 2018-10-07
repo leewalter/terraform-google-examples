@@ -1,0 +1,414 @@
+Steps to use terraform to deploy a k8s cluster running ngnix on GCP:
+
+1/ git clone https://github.com/GoogleCloudPlatform/terraform-google-examples.git
+
+happywalter@cloudshell:~ (walter-terraform)$ cd terraform-google-examples/
+
+2/ check terraform version and build ok,
+
+happywalter@cloudshell:~/terraform-google-examples/example-gke-k8s-service-lb (walter-terraform)$ terraform -h
+Usage: terraform [-version] [-help] <command> [args]
+The available commands for execution are listed below.
+The most common, useful commands are shown first, followed by
+less common or more advanced commands. If you're just getting
+started with Terraform, stick with the common commands. For the
+other commands, please read the help and docs before usage.
+Common commands:
+    apply              Builds or changes infrastructure
+    console            Interactive console for Terraform interpolations
+ destroy            Destroy Terraform-managed infrastructure
+    env                Workspace management
+    fmt                Rewrites config files to canonical format
+    get                Download and install modules for the configuration
+    graph              Create a visual graph of Terraform resources
+    import             Import existing infrastructure into Terraform
+    init               Initialize a Terraform working directory
+    output             Read an output from a state file
+    plan               Generate and show an execution plan
+    providers          Prints a tree of the providers used in the configuration
+    push               Upload this Terraform module to Atlas to run
+    refresh            Update local state file against real resources
+    show               Inspect Terraform state or plan
+    taint              Manually mark a resource for recreation
+    untaint            Manually unmark a resource as tainted
+    validate           Validates the Terraform files
+    version            Prints the Terraform version
+    workspace          Workspace management
+
+All other commands:
+    debug              Debug output management (experimental)
+    force-unlock       Manually unlock the terraform state
+    state              Advanced state management
+happywalter@cloudshell:~/terraform-google-examples/example-gke-k8s-service-lb (walter-terraform)$ terraform version
+Terraform v0.11.8
+
+3/ review main.tf - we will use example-gke-k8s-service-lb which will deploy a k8s service running nginx
+
+see more at
+https://github.com/GoogleCloudPlatform/terraform-google-examples/tree/master/example-gke-k8s-service-lb
+
+
+4/ terraform init 
+
+happywalter@cloudshell:~/terraform-google-examples/example-gke-k8s-service-lb (walter-terraform)$ terraform init
+
+Initializing provider plugins...
+- Checking for available provider plugins on https://releases.hashicorp.com...
+- Downloading plugin for provider "kubernetes" (1.2.0)...
+- Downloading plugin for provider "google" (1.18.0)...
+
+The following providers do not have any version constraints in configuration,
+so the latest version was installed.
+
+To prevent automatic upgrades to new major versions that may contain breaking
+changes, it is recommended to add version = "..." constraints to the
+corresponding provider blocks in configuration, with the constraint strings
+suggested below.
+
+* provider.google: version = "~> 1.18"
+* provider.kubernetes: version = "~> 1.2"
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+happywalter@cloudshell:~/terraform-google-examples/example-gke-k8s-service-lb (walter-terraform)$
+...
+
+This plan was saved to: tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "tfplan"
+
+happywalter@cloudshell:~/terraform-google-examples/example-gke-k8s-service-lb (walter-terraform)$
+
+=======
+5/ check tfplan file and try to apply
+
+happywalter@cloudshell:~/terraform-google-examples/example-gke-k8s-service-lb (walter-terraform)$ ls -lr
+total 36
+-rw-r--r-- 1 happywalter happywalter 15876 Oct  7 09:43 tfplan
+-rwxr-xr-x 1 happywalter happywalter   387 Oct  7 09:12 test.sh
+-rw-r--r-- 1 happywalter happywalter    65 Oct  7 09:18 terraform.tfvars
+-rw-r--r-- 1 happywalter happywalter  1860 Oct  7 09:12 README.md
+-rw-r--r-- 1 happywalter happywalter  1888 Oct  7 09:12 main.tf
+-rw-r--r-- 1 happywalter happywalter  1797 Oct  7 09:12 k8s.tf
+
+-----------
+*** when I tried to apply , it failed because I forgot to enable k8s API allowed in my cloud settings.
+
+....
+...
+
+Error: Error applying plan:
+
+*** 1 error(s) occurred:  (It will give out EXACTLY where it failed, so very easy to troubleshoot and fix the issue !) ***
+
+* google_container_cluster.default: 1 error(s) occurred:
+
+* google_container_cluster.default: googleapi: Error 403: Kubernetes Engine API is not enabled for this project. Please ensure it is enabled in Google Cloud Console and try again: visit https://console.cloud.google.com/apis/api/container.googleapis.com/overview?project=walter-terraform to do so., forbidden
+
+Terraform does not automatically rollback in the face of errors.
+Instead, your Terraform state file has been partially updated with
+any resources that successfully completed. Please address the error
+above and apply again to incrementally change your infrastructure.
+
+-----------
+6/ so I enable k8s API for this project ! 
+
+happywalter@cloudshell:~/terraform-google-examples/example-gke-k8s-service-lb (walter-terraform)$  
+
+--------
+API Library
+
+ 
+Kubernetes Engine API
+Google
+The Google Kubernetes Engine API is used for building and managing container based applications,…
+ 
+so enable k8s API 
+---------- 
+
+7/*** I intentionally re-apply without first checking a new plan, it gives out very nice warning ! *** 
+
+happywalter@cloudshell:~/terraform-google-examples/example-gke-k8s-service-lb (walter-terraform)$ terraform apply tfplan
+Failed to load backend: This plan was created against an older state than is current. Please create
+a new plan file against the latest state and try again.
+
+Terraform doesn't allow you to run plans that were created from older
+states since it doesn't properly represent the latest changes Terraform
+may have made, and can result in unsafe behavior.
+
+Plan Serial:    0
+Current Serial: 2
+---------------------
+
+==============
+8/ re-check plan,
+
+happywalter@cloudshell:~/terraform-google-examples/example-gke-k8s-service-lb (walter-terraform)$ terraform plan -out=tfplan
+Refreshing Terraform state in-memory prior to plan...
+The refreshed state will be used to calculate this plan, but will not be
+persisted to local or remote state storage.
+
+google_compute_address.default: Refreshing state... (ID: walter-terraform/us-west1/tf-gke-k8s)
+google_compute_network.default: Refreshing state... (ID: tf-gke-k8s)
+data.google_client_config.current: Refreshing state...
+data.google_container_engine_versions.default: Refreshing state...
+google_compute_subnetwork.default: Refreshing state... (ID: us-west1/tf-gke-k8s)
+
+------------------------------------------------------------------------
+
+An execution plan has been generated and is shown below.
+Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  + google_container_cluster.default
+      id:                                                          <computed>
+      additional_zones.#:                                          <computed>
+      addons_config.#:                                             <computed>
+      cluster_ipv4_cidr:                                           <computed>
+      enable_binary_authorization:                                 "false"
+      enable_kubernetes_alpha:                                     "false"
+      enable_legacy_abac:                                          "true"
+      endpoint:                                                    <computed>
+      initial_node_count:                                          "3"
+      instance_group_urls.#:                                       <computed>
+      logging_service:                                             <computed>
+      master_auth.#:                                               <computed>
+      master_version:                                              <computed>
+      min_master_version:                                          "1.10.7-gke.2"
+      monitoring_service:                                          <computed>
+      name:                                                        "tf-gke-k8s"
+      network:                                                     "tf-gke-k8s"
+      network_policy.#:                                            <computed>
+      node_config.#:                                               <computed>
+      node_pool.#:                                                 <computed>
+      node_version:                                                <computed>
+      private_cluster:                                             "false"
+      project:                                                     <computed>
+      region:                                                      <computed>
+      subnetwork:                                                  "tf-gke-k8s"
+      zone:                                                        "us-west1-b"
+	  
+      metadata.0.name:                                             "nginx"
+      metadata.0.namespace:                                        "staging"
+      metadata.0.resource_version:                                 <computed>
+      metadata.0.self_link:                                        <computed>
+      metadata.0.uid:                                              <computed>
+      spec.#:                                                      "1"
+      spec.0.min_ready_seconds:                                    "0"
+      spec.0.replicas:                                             "1"
+      spec.0.selector.%:                                           "1"
+      spec.0.selector.run:                                         "nginx"
+      spec.0.template.#:                                           "1"
+      spec.0.template.0.container.#:                               "1"
+      spec.0.template.0.container.0.image:                         "nginx:latest"
+      spec.0.template.0.container.0.image_pull_policy:             <computed>
+      spec.0.template.0.container.0.name:                          "nginx"
+      spec.0.template.0.container.0.resources.#:                   "1"
+      spec.0.template.0.container.0.resources.0.limits.#:          "1"
+      spec.0.template.0.container.0.resources.0.limits.0.cpu:      "0.5"
+      spec.0.template.0.container.0.resources.0.limits.0.memory:   "512Mi"
+      spec.0.template.0.container.0.resources.0.requests.#:        "1"
+      spec.0.template.0.container.0.resources.0.requests.0.cpu:    "250m"
+      spec.0.template.0.container.0.resources.0.requests.0.memory: "50Mi"
+      spec.0.template.0.container.0.stdin:                         "false"
+      spec.0.template.0.container.0.stdin_once:                    "false"
+      spec.0.template.0.container.0.termination_message_path:      "/dev/termination-log"
+      spec.0.template.0.container.0.tty:                           "false"
+      spec.0.template.0.dns_policy:                                "ClusterFirst"
+      spec.0.template.0.host_ipc:                                  "false"
+      spec.0.template.0.host_network:                              "false"
+      spec.0.template.0.host_pid:                                  "false"
+      spec.0.template.0.hostname:                                  <computed>
+      spec.0.template.0.image_pull_secrets.#:                      <computed>
+      spec.0.template.0.node_name:                                 <computed>
+      spec.0.template.0.restart_policy:                            "Always"
+      spec.0.template.0.service_account_name:                      <computed>
+      spec.0.template.0.termination_grace_period_seconds:          "30"	  
+
+  + kubernetes_service.nginx
+      id:                                                          <computed>
+      load_balancer_ingress.#:                                     <computed>
+      metadata.#:                                                  "1"
+      metadata.0.generation:                                       <computed>
+      metadata.0.name:                                             "nginx"
+      metadata.0.namespace:                                        "staging"
+      metadata.0.resource_version:                                 <computed>
+      metadata.0.self_link:                                        <computed>
+      metadata.0.uid:                                              <computed>
+      spec.#:                                                      "1"
+      spec.0.cluster_ip:                                           <computed>
+      spec.0.load_balancer_ip:                                     "35.197.127.59"
+      spec.0.port.#:                                               "1"
+      spec.0.port.0.node_port:                                     <computed>
+      spec.0.port.0.port:                                          "80"
+      spec.0.port.0.protocol:                                      "TCP"
+      spec.0.port.0.target_port:                                   "80"
+      spec.0.selector.%:                                           "1"
+      spec.0.selector.run:                                         "nginx"
+      spec.0.session_affinity:                                     "ClientIP"
+      spec.0.type:                                                 "LoadBalancer"
+
+
+Plan: 4 to add, 0 to change, 0 to destroy.
+
+------------------------------------------------------------------------
+
+This plan was saved to: tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "tfplan"
+
+...
+
+Plan: 4 to add, 0 to change, 0 to destroy.
+
+------------------------------------------------------------------------
+
+This plan was saved to: tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "tfplan"
+
+happywalter@cloudshell:~/terraform-google-examples/example-gke-k8s-service-lb (walter-terraform)$
+
+====
+9/ re-apply and then all work. It gives out nice timing check every 10 sec too ! 
+
+happywalter@cloudshell:~/terraform-google-examples/example-gke-k8s-service-lb (walter-terraform)$ terraform apply tfplan
+google_container_cluster.default: Creating...
+  additional_zones.#:          "" => "<computed>"
+  addons_config.#:             "" => "<computed>"
+  cluster_ipv4_cidr:           "" => "<computed>"
+  enable_binary_authorization: "" => "false"
+  enable_kubernetes_alpha:     "" => "false"
+  enable_legacy_abac:          "" => "true"
+  endpoint:                    "" => "<computed>"
+  initial_node_count:          "" => "3"
+  instance_group_urls.#:       "" => "<computed>"
+  logging_service:             "" => "<computed>"
+  master_auth.#:               "" => "<computed>"
+  master_version:              "" => "<computed>"
+  min_master_version:          "" => "1.10.7-gke.2"
+  monitoring_service:          "" => "<computed>"
+  name:                        "" => "tf-gke-k8s"
+  network:                     "" => "tf-gke-k8s"
+  network_policy.#:            "" => "<computed>"
+  node_config.#:               "" => "<computed>"
+  node_pool.#:                 "" => "<computed>"
+  node_version:                "" => "<computed>"
+  private_cluster:             "" => "false"
+  project:                     "" => "<computed>"
+  region:                      "" => "<computed>"
+  subnetwork:                  "" => "tf-gke-k8s"
+  zone:                        "" => "us-west1-b"
+google_container_cluster.default: Still creating... (10s elapsed)
+google_container_cluster.default: Still creating... (20s elapsed)
+google_container_cluster.default: Still creating... (30s elapsed)
+google_container_cluster.default: Still creating... (40s elapsed)
+google_container_cluster.default: Still creating... (50s elapsed)
+google_container_cluster.default: Still creating... (1m0s elapsed)
+google_container_cluster.default: Still creating... (1m10s elapsed)
+google_container_cluster.default: Still creating... (1m20s elapsed)
+google_container_cluster.default: Still creating... (1m30s elapsed)
+google_container_cluster.default: Still creating... (1m40s elapsed)
+google_container_cluster.default: Still creating... (1m50s elapsed)
+google_container_cluster.default: Still creating... (2m0s elapsed)
+google_container_cluster.default: Creation complete after 2m2s (ID: tf-gke-k8s)
+kubernetes_namespace.staging: Creating...
+  metadata.#:                  "" => "1"
+  metadata.0.generation:       "" => "<computed>"
+  metadata.0.name:             "" => "staging"
+  metadata.0.resource_version: "" => "<computed>"
+  metadata.0.self_link:        "" => "<computed>"
+  metadata.0.uid:              "" => "<computed>"
+kubernetes_namespace.staging: Creation complete after 0s (ID: staging)
+kubernetes_service.nginx: Creating...
+  load_balancer_ingress.#:     "" => "<computed>"
+  metadata.#:                  "" => "1"
+  metadata.0.generation:       "" => "<computed>"
+  metadata.0.name:             "" => "nginx"
+  metadata.0.namespace:        "" => "staging"
+  metadata.0.resource_version: "" => "<computed>"
+  metadata.0.self_link:        "" => "<computed>"
+  metadata.0.uid:              "" => "<computed>"
+  spec.#:                      "" => "1"
+  spec.0.cluster_ip:           "" => "<computed>"
+  spec.0.load_balancer_ip:     "" => "35.197.127.59"
+  spec.0.port.#:               "" => "1"
+  spec.0.port.0.node_port:     "" => "<computed>"
+  spec.0.port.0.port:          "" => "80"
+  spec.0.port.0.protocol:      "" => "TCP"
+  spec.0.port.0.target_port:   "" => "80"
+  spec.0.selector.%:           "" => "1"
+  spec.0.selector.run:         "" => "nginx"
+  spec.0.session_affinity:     "" => "ClientIP"
+  spec.0.type:                 "" => "LoadBalancer"
+kubernetes_replication_controller.nginx: Creating...
+  metadata.#:                                                  "" => "1"
+  metadata.0.generation:                                       "" => "<computed>"
+  metadata.0.labels.%:                                         "" => "1"
+  metadata.0.labels.run:                                       "" => "nginx"
+  metadata.0.name:                                             "" => "nginx"
+  metadata.0.namespace:                                        "" => "staging"
+  metadata.0.resource_version:                                 "" => "<computed>"
+  metadata.0.self_link:                                        "" => "<computed>"
+  metadata.0.uid:                                              "" => "<computed>"
+  spec.#:                                                      "" => "1"
+  spec.0.min_ready_seconds:                                    "" => "0"
+  spec.0.replicas:                                             "" => "1"
+  spec.0.selector.%:                                           "" => "1"
+  spec.0.selector.run:                                         "" => "nginx"
+  spec.0.template.#:                                           "" => "1"
+  spec.0.template.0.container.#:                               "" => "1"
+  spec.0.template.0.container.0.image:                         "" => "nginx:latest"
+  spec.0.template.0.container.0.image_pull_policy:             "" => "<computed>"
+  spec.0.template.0.container.0.name:                          "" => "nginx"
+  spec.0.template.0.container.0.resources.#:                   "" => "1"
+  spec.0.template.0.container.0.resources.0.limits.#:          "" => "1"
+  spec.0.template.0.container.0.resources.0.limits.0.cpu:      "" => "0.5"
+  spec.0.template.0.container.0.resources.0.limits.0.memory:   "" => "512Mi"
+  spec.0.template.0.container.0.resources.0.requests.#:        "" => "1"
+  spec.0.template.0.container.0.resources.0.requests.0.cpu:    "" => "250m"
+  spec.0.template.0.container.0.resources.0.requests.0.memory: "" => "50Mi"
+  spec.0.template.0.container.0.stdin:                         "" => "false"
+  spec.0.template.0.container.0.stdin_once:                    "" => "false"
+  spec.0.template.0.container.0.termination_message_path:      "" => "/dev/termination-log"
+  spec.0.template.0.container.0.tty:                           "" => "false"
+  spec.0.template.0.dns_policy:                                "" => "ClusterFirst"
+  spec.0.template.0.host_ipc:                                  "" => "false"
+  spec.0.template.0.host_network:                              "" => "false"
+  spec.0.template.0.host_pid:                                  "" => "false"
+  spec.0.template.0.hostname:                                  "" => "<computed>"
+  spec.0.template.0.image_pull_secrets.#:                      "" => "<computed>"
+  spec.0.template.0.node_name:                                 "" => "<computed>"
+  spec.0.template.0.restart_policy:                            "" => "Always"
+  spec.0.template.0.service_account_name:                      "" => "<computed>"
+  spec.0.template.0.termination_grace_period_seconds:          "" => "30"
+kubernetes_replication_controller.nginx: Creation complete after 0s (ID: staging/nginx)
+kubernetes_service.nginx: Still creating... (10s elapsed)
+kubernetes_service.nginx: Still creating... (20s elapsed)
+kubernetes_service.nginx: Still creating... (30s elapsed)
+kubernetes_service.nginx: Still creating... (40s elapsed)
+kubernetes_service.nginx: Creation complete after 46s (ID: staging/nginx)
+
+Apply complete! Resources: 4 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+cluster_name = tf-gke-k8s
+cluster_region = us-west1
+cluster_zone = us-west1-b
+load-balancer-ip = 35.197.127.59
+network = https://www.googleapis.com/compute/v1/projects/walter-terraform/global/networks/tf-gke-k8s
+subnetwork_name = tf-gke-k8s
+happywalter@cloudshell:~/terraform-google-examples/example-gke-k8s-service-lb (walter-terraform)$
